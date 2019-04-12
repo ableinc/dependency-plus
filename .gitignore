@@ -1,1 +1,4 @@
 .idea/**
+build/**
+dependency_plus.egg-info/**
+dist/**

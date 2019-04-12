@@ -1,8 +1,9 @@
-import requests, json, io, subprocess, argparse
+import requests, json, io, subprocess, argparse, os
 from string import punctuation
 
 
 newPackagesJson = {}
+
 
 def remove_special_chars(package_name):
     package_name = package_name.replace('/', '-')
@@ -11,6 +12,7 @@ def remove_special_chars(package_name):
         if package_name.find(special_char) != -1 and special_char != ('-' and '_'):
             package_name.replace(special_char, '')
     return package_name
+
 
 def getRequests(param, compare_value, carrot):
     try:
@@ -31,12 +33,14 @@ def getRequests(param, compare_value, carrot):
     except AttributeError:
         print('{} package not found. Package could be deprecated.'.format(param))
 
+
 def write_new_json(data, original_packagejson, filePath):
-    if args['dnr'] == False:
+    if not args['dnr']:
         os.remove('{}/package.json'.format(filePath))
     original_packagejson['dependencies'] = data
     with open('package.json' if args['dnr'] else 'package_dependency_plus.json', 'w') as outfile:
         json.dump(original_packagejson, outfile)
+
 
 def checkDependencyVersions(filePath):
     with open(filePath) as fileObj:
@@ -52,7 +56,7 @@ def checkDependencyVersions(filePath):
 def npm_install():
     print('Running npm install...')
     proc = subprocess.Popen(['npm', 'install'], stdout=subprocess.PIPE)
-    for line in io.TextIOWrapper((proc.stdout), proc):
+    for line in io.TextIOWrapper(proc.stdout):
         print(line)
     print('Operation complete.')
 
