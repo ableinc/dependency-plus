@@ -1,64 +1,83 @@
-import requests, json, io, subprocess, argparse, os
+
+import requests, json, io, subprocess, argparse, os, sys
 from string import punctuation
 
 
-newPackagesJson = {}
+newDependencies = {}
+packagesNotFound = []
+# specialCharDict = {}
 
 
 def remove_special_chars(package_name):
-    package_name = package_name.replace('/', '-')
-    package_name = package_name.replace('@', '')
+    _package_name = package_name.replace('/', '-')
+    # if _package_name != package_name: specialCharDict[_package_name] = package_name
+    _package_name = package_name.replace('@', '')
+    # if _package_name != package_name: specialCharDict[_package_name] = package_name
     for special_char in list(punctuation):
-        if package_name.find(special_char) != -1 and special_char != ('-' and '_'):
-            package_name.replace(special_char, '')
-    return package_name
+        if _package_name.find(special_char) != -1 and special_char != ('-' and '_'):
+            _package_name.replace(special_char, '')
+    return _package_name
 
 
-def getRequests(param, compare_value, carrot):
+def get_requests(param, old_version, carrot):
     try:
         print("Checking '{}' for updates".format(param))
-        correctPackage = None
+        correct_package = None
         req = requests.get('https://www.npmjs.com/search/suggestions?q={}'.format(param))
-        reqJson = req.json()
-        correctPackage = [package if package['name'] == param else None for package in reqJson][0]
-        if correctPackage is None: raise AttributeError
-        if correctPackage['version'] > compare_value:
-            toList = correctPackage['version'].replace('.', ' ').split()
-            carrotComprehension = [carrot] + toList if carrot is not None else correctPackage['version']
-            return carrotComprehension
+        req_json = req.json()
+        correct_package = [package if package['name'] == param else None for package in req_json][0]
+        if correct_package is None: raise AttributeError
+        if correct_package['version'] > old_version:
+            to_list = correct_package['version'].replace('.', ' ').split()
+            carrot_comprehension = [carrot] + to_list if carrot is not None else correct_package['version']
+            return carrot_comprehension
         else:
-            toList = compare_value.replace('.', ' ').split()
-            carrotComprehension = [carrot] + toList if carrot is not None else compare_value
-            return carrotComprehension
+            to_list = old_version.replace('.', ' ').split()
+            carrot_comprehension = [carrot] + to_list if carrot is not None else old_version
+            return carrot_comprehension
     except AttributeError:
-        print('{} package not found. Package could be deprecated.'.format(param))
+        packagesNotFound.append(param)
 
 
-def write_new_json(data, original_packagejson, filePath):
-    if not args['dnr']:
-        os.remove('{}/package.json'.format(filePath))
-    original_packagejson['dependencies'] = data
+def write_new_json(new_dependencies, original_package_json, file_path):
+    if args['dnr'] is False:
+        os.remove(file_path)
+    original_package_json['dependencies'] = new_dependencies
     with open('package.json' if args['dnr'] else 'package_dependency_plus.json', 'w') as outfile:
-        json.dump(original_packagejson, outfile)
+        json.dump(original_package_json, outfile)
+    if args['npm']:
+        npm_install()
 
 
-def checkDependencyVersions(filePath):
-    with open(filePath) as fileObj:
-        packagesJson = json.load(fileObj)
-        for packageName, versionNumber in packagesJson['dependencies'].items():
-            if 'git' not in versionNumber:
-                carrot = '^' if '^' in versionNumber else None
-                val = getRequests(remove_special_chars(packageName), versionNumber, carrot)
-                newPackagesJson[packageName] = val
-    write_new_json(newPackagesJson, packagesJson, filePath)
+def check_dependency_versions(file_path):
+    try:
+        with open(file_path) as fileObj:
+            packages_json = json.load(fileObj)
+            for packageName, versionNumber in packages_json['dependencies'].items():
+                if 'git' not in versionNumber:
+                    carrot = '^' if '^' in versionNumber else None
+                    val = get_requests(remove_special_chars(packageName), versionNumber, carrot)
+                    newDependencies[packageName] = val
+        write_new_json(newDependencies, packages_json, file_path)
+    except TypeError:
+        print(args['file'], ' is not a valid package.json')
+        sys.exit()
 
 
 def npm_install():
     print('Running npm install...')
-    proc = subprocess.Popen(['npm', 'install'], stdout=subprocess.PIPE)
+    proc = subprocess.Popen(['npm', 'install'], stdout=subprocess.PIPE, cwd=args['file'].replace('package.json', ''))
     for line in io.TextIOWrapper(proc.stdout):
         print(line)
-    print('Operation complete.')
+    print('Install complete.')
+
+
+def cleanup():
+    if len(packagesNotFound) > 0:
+        print('Packages Not Found or Deprecated:\n')
+        for index, item in enumerate(packagesNotFound):
+            print(index, ': ', item)
+    del newDependencies, packagesNotFound
 
 
 if __name__ == '__main__':
@@ -67,10 +86,4 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--npm', type=bool, default=False, required=False, help='npm install new package.json')
     parser.add_argument('--dnr', type=bool, default=False, required=False, help='do not remove existing project package.json')
     args = vars(parser.parse_args())
-
-    if args['npm']:
-        print('npm install enabled.')
-        checkDependencyVersions(args['file'])
-        npm_install()
-    else:
-        checkDependencyVersions(args['file'])
+    check_dependency_versions(args['file'])

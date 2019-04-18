@@ -5,11 +5,12 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="dependency-plus",
-    version="0.0.1",
+    version="1.0.0",
     author="AbleInc - Jaylen Douglas",
     author_email="douglas.jaylen@gmail.com",
-    description="Dependency+ is a dependency free, python package that allows you to update your npm "
-                "packages to their latest releases.",
+    entry_points={'console_scripts': ['npm-updater=dependency-plus.main']},
+    description="Dependency+ automatically checks and updates your npm packages to their latest releases, while"
+                "also updating your project's existing package.json.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ableinc/dependency-plus",
