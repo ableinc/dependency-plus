@@ -43,7 +43,7 @@ def write_new_json(new_dependencies, original_package_json, file_path):
     if args['dnr'] is False:
         os.remove(file_path)
     original_package_json['dependencies'] = new_dependencies
-    with open('package.json' if args['dnr'] else 'package_dependency_plus.json', 'w') as outfile:
+    with open(os.path.join(args['file'], 'package.json') if args['dnr'] is False else os.path.join(args['file'], 'package_dependency_plus.json'), 'w') as outfile:
         json.dump(original_package_json, outfile)
     if args['npm']:
         npm_install()
@@ -60,7 +60,7 @@ def check_dependency_versions(file_path):
                     newDependencies[packageName] = val
         write_new_json(newDependencies, packages_json, file_path)
     except TypeError:
-        print(args['file'], ' is not a valid package.json')
+        print(file_path, ' is not a valid package.json')
         sys.exit()
 
 
@@ -87,3 +87,4 @@ if __name__ == '__main__':
     parser.add_argument('--dnr', type=bool, default=False, required=False, help='do not remove existing project package.json')
     args = vars(parser.parse_args())
     check_dependency_versions(args['file'])
+    cleanup()
