@@ -50,13 +50,13 @@ class DependencyPlus:
 
     def write_new_json(self):
         try:
-            if args['dnr'] == False:
+            if str(args['dnr']) == 'False':
                 os.remove(self.file_path)
             self.package_json['dependencies'] = self.newDependencies
             self.package_json['devDependencies'] = self.newDevDependencies
-            with open(self.file_path if args['dnr'] is False else self.file_path.replace('/package.json', '/package_dependency_plus.json'), 'w') as outfile:
+            with open(self.file_path if str(args['dnr']) == 'False' else self.file_path.replace('/package.json', '/package_dependency_plus.json'), 'w') as outfile:
                 json.dump(self.package_json, outfile, indent=2, sort_keys=True, ensure_ascii=False)
-            if args['npm'] == True and args['dnr'] == False:
+            if str(args['npm']) == 'True':
                 self.npm_install()
         except FileNotFoundError as fnfe:
             self.restore_backup_copy()
@@ -86,11 +86,14 @@ class DependencyPlus:
             pass
 
     def npm_install(self):
-        print('Running npm install...')
-        proc = subprocess.Popen(['npm', 'install'], stdout=subprocess.PIPE, cwd=self.file_path.replace('package.json', ''))
-        for line in io.TextIOWrapper(proc.stdout):
-            print(line)
-        print('Install complete.')
+        try:
+            print('Running npm install...')
+            proc = subprocess.Popen(['npm', 'install'], stdout=subprocess.PIPE, cwd=self.file_path.replace('package.json', ''))
+            for line in io.TextIOWrapper(proc.stdout):
+                print(line)
+            print('Install complete.')
+        except KeyboardInterrupt:
+            print('Stopping npm install...')
 
     def cleanup(self):
         try:
@@ -120,10 +123,7 @@ class DependencyPlus:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='Dependency+', description="Check for latest versions of your project's dependencies and upgrade them and your npm package.json, in relation to the updates.")
     parser.add_argument('-f', '--file', type=str, required=True, help='package.json file path; absolute or relative.')
-    parser.add_argument('-n', '--npm', type=bool, default=False, required=False, help='npm install new package.json')
-    parser.add_argument('--dnr', type=bool, default=True, required=False, help='do not remove existing project package.json')
+    parser.add_argument('-n', '--npm', type=str, required=False, default='False', help='npm install new package.json')
+    parser.add_argument('--dnr', type=str, required=False, default='True', help='do not remove existing project package.json')
     args = vars(parser.parse_args())
-    if args['npm'] == True and args['dnr'] == True:
-        print('Warning: --npm and --dnr cannot be combined.')
-        sys.exit()
     DependencyPlus(args['file'])
