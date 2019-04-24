@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="npm-updater",
-    version="1.0.0",
+    version="0.0.1",
     author="AbleInc - Jaylen Douglas",
     author_email="douglas.jaylen@gmail.com",
     entry_points={'console_scripts': ['npm-updater=dependency-plus:main']},
